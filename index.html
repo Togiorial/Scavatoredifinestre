@@ -36,6 +36,7 @@
             position: relative;
             overflow: hidden;
             box-shadow: 0 0 30px rgba(0,0,0,0.4);
+            margin: 0 auto; /* Centra la finestra */
         }
 
         #window-frame {
@@ -72,7 +73,7 @@
             to { transform: scale(1); }
         }
 
-        #counter {
+        #counter, #trophy-count, #points {
             margin-top: 20px;
             font-size: 24px;
             color: #333;
@@ -113,6 +114,56 @@
             color: #333;
             display: none; /* Nascondi il messaggio inizialmente */
         }
+
+        #trophy-icon {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            cursor: pointer;
+            font-size: 30px;
+        }
+
+        #trophy-list {
+            display: none;
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            z-index: 200;
+        }
+
+        #tools {
+            margin-top: 20px;
+        }
+
+        .tool {
+            margin: 5px;
+            padding: 10px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .tool:hover {
+            background-color: #27ae60;
+        }
+
+        #current-tool {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            display: none; /* Nascondi inizialmente */
+        }
     </style>
 </head>
 <body>
@@ -126,18 +177,39 @@
         </div>
         <div id="counter">Clicks: 0</div>
         <div id="window-count">Finestre scavate: 0</div>
-        <button id="regenerate-button">New Finestra</button>
+        <div id="points">Punti scavo: 0</div>
+        <button id="regenerate-button">Rigenera Finestra</button>
         <div id="final-message">HAI SCAVATO LA FINESTRA! 😱</div>
+        <div id="trophy-icon">🏆</div>
+        <div id="trophy-list">
+            <h3>TROFEI</h3>
+            <div id="trophies"></div>
+            <div id="unearned-trophies"></div>
+        </div>
+        <div id="current-tool">
+            <h4>Utensile Attuale:</h4>
+            <div id="tool-name">Nessuno</div>
+        </div>
+        <div id="tools">
+            <h3>Strumenti</h3>
+            <button class="tool" data-cost="10" data-value="2" data-name="Pala">Pala (10 punti, +2 per click)</button>
+            <button class="tool" data-cost="20" data-value="3" data-name="Piccone">Piccone (20 punti, +3 per click)</button>
+            <button class="tool" data-cost="25" data-value="5" data-name="Piccone Gold">Piccone Gold (25 punti, +5 per click)</button>
+            <button class="tool" data-cost="40" data-value="10" data-name="Trapano">Trapano (40 punti, +10 per click)</button>
+            <button class="tool" data-cost="60" data-value="20" data-name="Trapano">Trapano gold (60 punti, +20 per click)</button>
+        </div>
     </div>
     <div id="shatter-effect"></div>
 
     <audio id="tap-sound" src="https://assets.mixkit.co/active_storage/sfx/2577/2577-preview.mp3" preload="auto"></audio>
     <audio id="break-sound" src="https://assets.mixkit.co/active_storage/sfx/209/209-preview.mp3" preload="auto"></audio>
+    <audio id="trophy-sound" src="https://assets.mixkit.co/active_storage/sfx/2577/2577-preview.mp3" preload="auto"></audio>
 
     <script>
         const windowEl = document.getElementById('window');
         const counterEl = document.getElementById('counter');
         const windowCountEl = document.getElementById('window-count');
+        const pointsEl = document.getElementById('points');
         const cracks = [
             document.getElementById('crack1'),
             document.getElementById('crack2'),
@@ -146,13 +218,33 @@
         const shatterEffect = document.getElementById('shatter-effect');
         const tapSound = document.getElementById('tap-sound');
         const breakSound = document.getElementById('break-sound');
+        const trophySound = document.getElementById('trophy-sound');
         const regenerateButton = document.getElementById('regenerate-button');
         const finalMessage = document.getElementById('final-message');
+        const trophyIcon = document.getElementById('trophy-icon');
+        const trophyList = document.getElementById('trophy-list');
+        const trophiesEl = document.getElementById('trophies');
+        const unearnedTrophiesEl = document.getElementById('unearned-trophies');
+        const tools = document.querySelectorAll('.tool');
+        const currentToolEl = document.getElementById('current-tool');
+        const toolNameEl = document.getElementById('tool-name');
 
         let clicks = 0;
         let windowCount = 0;
+        let points = 0;
         const clicksToBreak = 20;
         let isBroken = false;
+        let toolValue = 1; // Valore di default per ogni click
+        let currentTool = "Nessuno"; // Utensile attuale
+
+        const trophies = [
+            { threshold: 10, name: "Scavatore Principiante" },
+            { threshold: 50, name: "Scavatore del Mestiere" },
+            { threshold: 100, name: "Scavatore Professionista" },
+            { threshold: 250, name: "Scavatore Maestro" },
+            { threshold: 500, name: "Scavatore Supremo" },
+            { threshold: 1000, name: "Lo Scavatore Galattico" }
+        ];
 
         windowEl.addEventListener('click', (e) => {
             if (isBroken) return;
@@ -161,8 +253,8 @@
             tapSound.currentTime = 0;
             tapSound.play();
 
-            // Incrementa contatore
-            clicks++;
+            // Incrementa contatore dei click
+            clicks += toolValue;
             counterEl.textContent = `Clicks: ${clicks}`;
 
             // Calcola la posizione relativa corretta considerando i bordi
@@ -184,6 +276,9 @@
             if (clicks >= clicksToBreak) {
                 breakWindow();
             }
+
+            // Controlla i trofei
+            checkTrophies();
         });
 
         function createHole(x, y) {
@@ -205,6 +300,10 @@
             isBroken = true;
             breakSound.play();
             
+            // Guadagna 1 punto per ogni finestra scavata
+            points += 1;
+            pointsEl.textContent = `Punti scavo: ${points}`;
+
             // Effetto di rottura
             shatterEffect.style.opacity = 0.8;
             setTimeout(() => {
@@ -239,6 +338,56 @@
             finalMessage.style.display = 'block';
         }
 
+        function checkTrophies() {
+            trophies.forEach(trophy => {
+                if (windowCount >= trophy.threshold) {
+                    if (!document.getElementById(trophy.name)) {
+                        const trophyEl = document.createElement('div');
+                        trophyEl.id = trophy.name;
+                        trophyEl.textContent = trophy.name;
+                        trophiesEl.appendChild(trophyEl);
+                        showTrophyNotification(trophy.name); // Mostra notifica trofeo
+                    }
+                }
+            });
+            updateUnearnedTrophies();
+        }
+
+        function showTrophyNotification(trophyName) {
+            const notification = document.createElement('div');
+            notification.textContent = `Hai guadagnato il trofeo: ${trophyName}!`;
+            notification.style.position = 'fixed';
+            notification.style.top = '10px';
+            notification.style.left = '50%';
+            notification.style.transform = 'translateX(-50%)';
+            notification.style.background = 'rgba(0, 128, 0, 0.8)';
+            notification.style.color = 'white';
+            notification.style.padding = '10px';
+            notification.style.borderRadius = '5px';
+            notification.style.zIndex = '300';
+            document.body.appendChild(notification);
+
+            // Suono di notifica
+            trophySound.currentTime = 0;
+            trophySound.play();
+
+            // Rimuovi notifica dopo 3 secondi
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        function updateUnearnedTrophies() {
+            unearnedTrophiesEl.innerHTML = ''; // Pulisci la lista
+            trophies.forEach(trophy => {
+                if (windowCount < trophy.threshold) {
+                    const trophyEl = document.createElement('div');
+                    trophyEl.textContent = `${trophy.name} - Richiesta: ${trophy.threshold} finestre`;
+                    unearnedTrophiesEl.appendChild(trophyEl);
+                }
+            });
+        }
+
         regenerateButton.addEventListener('click', () => {
             // Ripristina lo stato della finestra
             isBroken = false;
@@ -249,6 +398,29 @@
             windowEl.style.backgroundImage = 'none';
             regenerateButton.style.display = 'none';
             finalMessage.style.display = 'none'; // Nascondi il messaggio finale
+        });
+
+        trophyIcon.addEventListener('click', () => {
+            trophyList.style.display = trophyList.style.display === 'none' ? 'block' : 'none';
+        });
+
+        tools.forEach(tool => {
+            tool.addEventListener('click', () => {
+                const cost = parseInt(tool.getAttribute('data-cost'));
+                const value = parseInt(tool.getAttribute('data-value'));
+                const name = tool.getAttribute('data-name');
+                if (points >= cost) {
+                    points -= cost;
+                    toolValue = value; // Aggiorna il valore di scavo
+                    currentTool = name; // Aggiorna l'utensile attuale
+                    pointsEl.textContent = `Punti scavo: ${points}`;
+                    toolNameEl.textContent = currentTool; // Mostra l'utensile attuale
+                    currentToolEl.style.display = 'block'; // Mostra il riquadro dell'utensile
+                    alert(`Hai acquistato ${tool.textContent}!`);
+                } else {
+                    alert('Non hai abbastanza punti per acquistare questo strumento.');
+                }
+            });
         });
     </script>
 </body>
