@@ -90,6 +90,29 @@
             z-index: 100;
             transition: opacity 0.5s;
         }
+
+        #regenerate-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none; /* Nascondi il pulsante inizialmente */
+        }
+
+        #regenerate-button:hover {
+            background-color: #2980b9;
+        }
+
+        #final-message {
+            margin-top: 20px;
+            font-size: 24px;
+            color: #333;
+            display: none; /* Nascondi il messaggio inizialmente */
+        }
     </style>
 </head>
 <body>
@@ -102,6 +125,9 @@
             <div id="window-frame"></div>
         </div>
         <div id="counter">Clicks: 0</div>
+        <div id="window-count">Finestre scavate: 0</div>
+        <button id="regenerate-button">New Finestra</button>
+        <div id="final-message">HAI SCAVATO LA FINESTRA! 😱</div>
     </div>
     <div id="shatter-effect"></div>
 
@@ -111,6 +137,7 @@
     <script>
         const windowEl = document.getElementById('window');
         const counterEl = document.getElementById('counter');
+        const windowCountEl = document.getElementById('window-count');
         const cracks = [
             document.getElementById('crack1'),
             document.getElementById('crack2'),
@@ -119,8 +146,11 @@
         const shatterEffect = document.getElementById('shatter-effect');
         const tapSound = document.getElementById('tap-sound');
         const breakSound = document.getElementById('break-sound');
+        const regenerateButton = document.getElementById('regenerate-button');
+        const finalMessage = document.getElementById('final-message');
 
         let clicks = 0;
+        let windowCount = 0;
         const clicksToBreak = 20;
         let isBroken = false;
 
@@ -198,11 +228,28 @@
                 createHole(randomX, randomY);
             }
 
-            // Messaggio finale
-            setTimeout(() => {
-                counterEl.textContent = 'HAI SCAVATO LA FINESTRA! 😱';
-            }, 1000);
+            // Incrementa il contatore delle finestre scavate
+            windowCount++;
+            windowCountEl.textContent = `Finestre scavate: ${windowCount}`;
+
+            // Mostra il pulsante di rigenerazione
+            regenerateButton.style.display = 'block';
+
+            // Mostra il messaggio finale
+            finalMessage.style.display = 'block';
         }
+
+        regenerateButton.addEventListener('click', () => {
+            // Ripristina lo stato della finestra
+            isBroken = false;
+            clicks = 0;
+            counterEl.textContent = `Clicks: 0`;
+            cracks.forEach(crack => crack.style.opacity = 0);
+            windowEl.style.backgroundColor = '#c6e2ff';
+            windowEl.style.backgroundImage = 'none';
+            regenerateButton.style.display = 'none';
+            finalMessage.style.display = 'none'; // Nascondi il messaggio finale
+        });
     </script>
 </body>
 </html>
